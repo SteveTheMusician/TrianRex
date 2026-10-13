@@ -66,7 +66,7 @@ Fehler gefunden? Feedback? Einfach ein Issue aufmachen!
 
 ## 🦊 Persönliche Anmerkung
 
-Ich bin großer Freund von: Ich scripte selber mein Zeug, aber da ich für diese Sidequest nicht viel Zeit habe,
+Ich bin großer Freund von: Ich scripte mein Zeug selbst, aber da ich für diese Sidequest nicht viel Zeit habe,
 habe ich das hier zu 99% mit einem LLM (KI) gemacht.
 
 Da es aber JS ist, kann ich damit was anfangen und bei Fragen zur Seite stehen.
