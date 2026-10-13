@@ -1,79 +1,82 @@
+**English** | [Deutsch](README.de.md)
+
 # 🔺 TrianRex
 
 ![Version](https://img.shields.io/badge/Version-0.9-purple)
 ![Affinity](https://img.shields.io/badge/Affinity_Designer-3.0+-1D63ED)
-![Language](https://img.shields.io/badge/Sprache-JavaScript-yellow)
+![Language](https://img.shields.io/badge/Language-JavaScript-yellow)
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-> **Triangulation für Affinity Designer** — verwandle jedes Vektorobjekt in ein
-> individuelles Netz aus Dreiecken, das sich exakt an die äußere Form anschmiegt.
+> **Triangulation for Affinity Designer** — turn any vector object into an
+> individual mesh of triangles that hugs the shape's exact outer contour.
 
 ---
 
 ## 📥 Download
 
-⬇️ **[TrianRex v0.9 herunterladen](downloads/TrianRex_v0.9.afscript)**
+⬇️ **[Download TrianRex v0.9](downloads/TrianRex_v0.9.afscript)**
 
-## ✨ Funktionen
+## ✨ Features
 
-| Feature | Beschreibung |
-|---------|--------------|
-| 🎯 **Formgenaue Triangulation** | Die Dreiecke folgen exakt der Außenkontur des Objekts — Kreise, Sterne, Herzen oder eigene Pfade bleiben sauber erkennbar (kein „Pizza-Effekt") |
-| 🎨 **Objektfarbe** | Die Füllung des Originals (Vollton **und** Verläufe) wird auf die Dreiecke übertragen — auch nach Verschieben oder Skalieren |
-| 🎲 **Zufällig-Modus** | Farbige Variation der Objektfarbe, ausgehend von den nächstgelegenen Farbtönen |
-| ↕️ **Verlaufs-Modi** | Gerichtete Abstufungen: oben→unten, unten→oben, links→rechts |
-| 🌈 **Farbvariation** | Regler für dezente bis kräftige Farb-Shades pro Dreieck |
-| ⚙️ **Einstellbare Größe & Unregelmäßigkeit** | Dreiecksgröße und Jitter des Punktasters frei wählbar |
-| 🎲 **Seed** | Gleicher Seed = reproduzierbares Ergebnis |
-| 📁 **Automatische Gruppierung** | Das Ergebnis landet in einer eigenen Gruppe (`Objekt-Triangulated`, `-1`, `-2`, …) |
+| Feature | Description |
+|---------|-------------|
+| 🎯 **Contour-accurate triangulation** | The triangles follow the object's exact outer contour — circles, stars, hearts or custom paths stay clearly recognizable (no "pizza effect") |
+| 🎨 **Object color** | The original's fill (solid colors **and** gradients) is transferred onto the triangles — even after moving or scaling the object |
+| 🎲 **Random mode** | Colorful variations of the object color, starting from the nearest hues |
+| ↕️ **Gradient modes** | Directional shadings: top→bottom, bottom→top, left→right |
+| 🌈 **Color variation** | Slider for subtle to strong per-triangle color shades |
+| ⚙️ **Adjustable size & irregularity** | Triangle size and point grid jitter are freely configurable |
+| 🎲 **Seed** | Same seed = reproducible result |
+| 📁 **Automatic grouping** | The result lands in its own group (`Object-Triangulated`, `-1`, `-2`, …) |
 
 ## 🚀 Installation
 
 1. Download: [`downloads/TrianRex_v0.9.afscript`](downloads/TrianRex_v0.9.afscript)
-2. Datei in den Affinity-Script-Ordner legen
-   *(in Affinity Designer zu finden unter: **Bearbeiten → Einstellungen → Tools → Scripts**)*
-3. Affinity Designer neu starten
-4. Skript über die Scripts-Konsole bzw. das Skript-Menü starten
+2. Place the file into your Affinity scripts folder
+   *(in Affinity Designer, found under: **Edit → Preferences → Tools → Scripts**)*
+3. Restart Affinity Designer
+4. Run the script via the Scripts console or script menu
 
-## 📖 Verwendung
+## 📖 Usage
 
-1. Ein beliebiges Vektorobjekt (Shape oder Kurve) auswählen
-2. Skript `TrianRex` starten
-3. Parameter im Dialog einstellen
-4. **OK** — die Dreiecksgruppe wird erzeugt ✅
+1. Select any vector object (shape or curve)
+2. Run the `TrianRex` script
+3. Adjust the parameters in the dialog
+4. Click **OK** — the triangle group is created ✅
 
-> 💡 **Tipp:** Das Original bleibt unangetastet — verstecke es einfach, um nur
-> das Triangulations-Ergebnis zu sehen.
+> 💡 **Tip:** The original object stays untouched — simply hide it to
+> view only the triangulation result.
 
-## ⚠️ Bekannte Einschränkungen (Beta)
+## ⚠️ Known Limitations (Beta)
 
-- Bei sehr komplexen Figuren wird der Verlauf nicht immer korrekt erkannt
-- Vereinzelt können kleine Randdreiecke minimal über die Kontur ragen
-- Sporadisch liefert Affinity zwischengespeicherte Objektdaten — im Zweifel einmal speichern (Strg+S) und das Skript erneut starten
+- On very complex shapes, gradients are not always detected correctly
+- Occasionally, small edge triangles may stick out minimally beyond the contour
+- Sometimes Affinity serves cached object data — if in doubt, save once (Ctrl+S) and re-run the script
 
-## 🛠️ Technologie
+## 🛠️ Technology
 
-- **Plattform:** Affinity Designer 3 (Scripting API)
-- **Sprache:** JavaScript (`.afscript`)
-- **Geometrie:** Eigene Delaunay-Triangulation mit Formfilterung (Raycasting + Kantentests)
+- **Platform:** Affinity Designer 3 (scripting API)
+- **Language:** JavaScript (`.afscript`)
+- **Geometry:** Custom Delaunay triangulation with shape filtering (ray casting + edge tests)
 
-## 🤖 Generiert mit KI
+## 🤖 AI-Assisted
 
-Dieses Skript wurde unter Mithilfe von **KI-Assistenz** entwickelt
-(iteratives Debugging gemeinsam mit Tester-Feedback ❤️).
+This script was developed with the help of **AI assistance**
+(iterative debugging together with tester feedback ❤️).
 
-Fehler gefunden? Feedback? Einfach ein Issue aufmachen!
+Found a bug? Got feedback? Feel free to open an issue!
 
-## 🦊 Persönliche Anmerkung
+## 🦊 Personal Note
 
-Ich bin großer Freund von: Ich scripte mein Zeug selbst, aber da ich für diese Sidequest nicht viel Zeit habe,
-habe ich das hier zu 99% mit einem LLM (KI) gemacht.
+I'm a big believer in scripting my own stuff — but since I don't have much
+time for this side quest, I built it 99% with an LLM (AI).
 
-Da es aber JS ist, kann ich damit was anfangen und bei Fragen zur Seite stehen.
-Das Script kannst du manuell in Affinity laden oder installiere einfach eines der Verpackten Versionen
+Since it's JS, though, I can work with it and am happy to help with questions.
+You can load the script manually into Affinity, or simply install one of the packaged versions.
 
-LG
+Cheers
 
 ---
 
-*Made with 🦊 and  KI🐾*
+*Made with 🦊 and AI 🐾*
