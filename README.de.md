@@ -1,6 +1,6 @@
 [English](README.md) | **Deutsch**
 
-# 🔺 TrianRex
+# 🦖 TrianRex
 
 ![Version](https://img.shields.io/badge/Version-0.9-purple)
 ![Affinity](https://img.shields.io/badge/Affinity_Designer-3.0+-1D63ED)
@@ -21,8 +21,8 @@
 
 | Feature | Beschreibung |
 |---------|--------------|
-| 🎯 **Formgenaue Triangulation** | Die Dreiecke folgen exakt der Außenkontur des Objekts — Kreise, Sterne, Herzen oder eigene Pfade bleiben sauber erkennbar (kein „Pizza-Effekt") |
-| 🎨 **Objektfarbe** | Die Füllung des Originals (Vollton **und** Verläufe) wird auf die Dreiecke übertragen — auch nach Verschieben oder Skalieren |
+| 🎯 **Formgenaue Triangulation** | Die Dreiecke folgen exakt der Außenkontur des Objekts — Kreise, Sterne, Herzen oder eigene Pfade bleiben sauber erkennbar |
+| 🎨 **Objektfarbe** | Die Füllung des Originals (Vollton **und** Verläufe) wird auf die Dreiecke übertragen |
 | 🎲 **Zufällig-Modus** | Farbige Variation der Objektfarbe, ausgehend von den nächstgelegenen Farbtönen |
 | ↕️ **Verlaufs-Modi** | Gerichtete Abstufungen: oben→unten, unten→oben, links→rechts |
 | 🌈 **Farbvariation** | Regler für dezente bis kräftige Farb-Shades pro Dreieck |
@@ -52,7 +52,7 @@
 
 - Bei sehr komplexen Figuren wird der Verlauf nicht immer korrekt erkannt
 - Vereinzelt können kleine Randdreiecke minimal über die Kontur ragen
-- Sporadisch liefert Affinity zwischengespeicherte Objektdaten — im Zweifel einmal speichern (Strg+S) und das Skript erneut starten
+- Sporadisch liefert Affinity zwischengespeicherte Objektdaten — im Zweifel einmal speichern, dein Projekt erneut öffnen und das Skript erneut starten
 
 ## 🛠️ Technologie
 
