@@ -8,13 +8,18 @@
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-> **Triangulation für Affinity Designer** — verwandle jedes Vektorobjekt in ein
-> individuelles Netz aus Dreiecken, das sich exakt an die äußere Form anschmiegt.
+> **Triangulation für Affinity Designer** — verwandle jedes Vektorobjekt in ein 
+> individuelles Netz aus Dreiecken und erschaffe so dein eigenes Polygon-Kunstwerk.
 
+
+<p align="center">
+  <img src="images/TrianRexIcon.jpg" alt="TrianRex Icon" width="200" height="200">
+</p>
 ---
 
 ## 📥 Download
 
+⬇️ **[TrianRex v0.9.8 herunterladen](downloads/TrianRex_v0.9.8.afscript)**
 ⬇️ **[TrianRex v0.9 herunterladen](downloads/TrianRex_v0.9.afscript)**
 
 ## ✨ Funktionen

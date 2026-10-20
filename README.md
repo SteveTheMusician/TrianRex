@@ -9,12 +9,17 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 > **Triangulation for Affinity Designer** — turn any vector object into an
-> individual mesh of triangles that hugs the shape's exact outer contour.
+> individual mesh of triangles to create your own polygon-art.
+
+<p align="center">
+  <img src="images/TrianRexIcon.jpg" alt="TrianRex Icon" width="200" height="200">
+</p>
 
 ---
 
 ## 📥 Download
 
+⬇️ **[Download TrianRex v0.9.8](downloads/TrianRex_v0.9.8.afscript)**
 ⬇️ **[Download TrianRex v0.9](downloads/TrianRex_v0.9.afscript)**
 
 ## ✨ Features

@@ -2,7 +2,7 @@
 
 /**
  * ============================================================================
- * TRIANREX v0.9.9
+ * TRIANREX v0.9.8
  * ============================================================================
  */
 
@@ -18,7 +18,7 @@ const { RGBA8 } = require('/colours');
 const { UnitType } = require('/units');
 const { BlendMode } = require('affinity:common');
 
-const APP_NAME      = 'TrianRex 0.9.9';
+const APP_NAME      = 'TrianRex 0.9.8';
 const MAX_TRIANGLES = 12000;
 const MAX_POINTS    = 6000;
 const GRID_BUDGET   = 4000;
@@ -1581,7 +1581,7 @@ function main() {
   }
 
   // ── ABLAUF ─────────────────────────────────────────────────────────────
-  let d = { size: startSize, jitter: 50, varv: 0, seed: 0, mode: 0 };
+  let d = { size: startSize, jitter: 50, varv: 25, seed: 0, mode: 0 };
 
   const p = runParamsDialog(d, minSize, !contours.length);
   if (!p) return;                     // Abbruch
