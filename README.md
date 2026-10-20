@@ -37,9 +37,10 @@
 
 ## 🚀 Installation
 
-1. Download: [`downloads/TrianRex_v0.9.afscript`](downloads/TrianRex_v0.9.afscript)
+1. Download: [`downloads/TrianRex_v0.9.8.afscript`](downloads/TrianRex_v0.9.8.afscript)
+   - If you cant see the file, simply klick on the download arrow in the right corner or on "view file"
 2. Place the file into your Affinity scripts folder
-   *(in Affinity Designer, found under: **Edit → Preferences → Tools → Scripts**)*
+   *(in Affinity Designer, found under: **Edit → Preferences → Tools → Scripts** or Import Script via Scriptlibrary)*
 3. Restart Affinity Designer
 4. Run the script via the Scripts console or script menu
 
