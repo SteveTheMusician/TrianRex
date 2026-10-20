@@ -1,6 +1,6 @@
 [English](README.md) | **Deutsch**
 
-# 🔺 TrianRex
+# 🦖 TrianRex
 
 ![Version](https://img.shields.io/badge/Version-0.9-purple)
 ![Affinity](https://img.shields.io/badge/Affinity_Designer-3.0+-1D63ED)
@@ -8,21 +8,26 @@
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-> **Triangulation für Affinity Designer** — verwandle jedes Vektorobjekt in ein
-> individuelles Netz aus Dreiecken, das sich exakt an die äußere Form anschmiegt.
+> **Triangulation für Affinity Designer** — verwandle jedes Vektorobjekt in ein 
+> individuelles Netz aus Dreiecken und erschaffe so dein eigenes Polygon-Kunstwerk.
 
+
+<p align="center">
+  <img src="images/TrianRexIcon.jpg" alt="TrianRex Icon" width="200" height="200">
+</p>
 ---
 
 ## 📥 Download
 
+⬇️ **[TrianRex v0.9.8 herunterladen](downloads/TrianRex_v0.9.8.afscript)**
 ⬇️ **[TrianRex v0.9 herunterladen](downloads/TrianRex_v0.9.afscript)**
 
 ## ✨ Funktionen
 
 | Feature | Beschreibung |
 |---------|--------------|
-| 🎯 **Formgenaue Triangulation** | Die Dreiecke folgen exakt der Außenkontur des Objekts — Kreise, Sterne, Herzen oder eigene Pfade bleiben sauber erkennbar (kein „Pizza-Effekt") |
-| 🎨 **Objektfarbe** | Die Füllung des Originals (Vollton **und** Verläufe) wird auf die Dreiecke übertragen — auch nach Verschieben oder Skalieren |
+| 🎯 **Formgenaue Triangulation** | Die Dreiecke folgen exakt der Außenkontur des Objekts — Kreise, Sterne, Herzen oder eigene Pfade bleiben sauber erkennbar |
+| 🎨 **Objektfarbe** | Die Füllung des Originals (Vollton **und** Verläufe) wird auf die Dreiecke übertragen |
 | 🎲 **Zufällig-Modus** | Farbige Variation der Objektfarbe, ausgehend von den nächstgelegenen Farbtönen |
 | ↕️ **Verlaufs-Modi** | Gerichtete Abstufungen: oben→unten, unten→oben, links→rechts |
 | 🌈 **Farbvariation** | Regler für dezente bis kräftige Farb-Shades pro Dreieck |
@@ -52,7 +57,7 @@
 
 - Bei sehr komplexen Figuren wird der Verlauf nicht immer korrekt erkannt
 - Vereinzelt können kleine Randdreiecke minimal über die Kontur ragen
-- Sporadisch liefert Affinity zwischengespeicherte Objektdaten — im Zweifel einmal speichern (Strg+S) und das Skript erneut starten
+- Sporadisch liefert Affinity zwischengespeicherte Objektdaten — im Zweifel einmal speichern, dein Projekt erneut öffnen und das Skript erneut starten
 
 ## 🛠️ Technologie
 

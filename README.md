@@ -1,6 +1,6 @@
 **English** | [Deutsch](README.de.md)
 
-# 🔺 TrianRex
+# 🦖 TrianRex
 
 ![Version](https://img.shields.io/badge/Version-0.9-purple)
 ![Affinity](https://img.shields.io/badge/Affinity_Designer-3.0+-1D63ED)
@@ -9,20 +9,25 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 > **Triangulation for Affinity Designer** — turn any vector object into an
-> individual mesh of triangles that hugs the shape's exact outer contour.
+> individual mesh of triangles to create your own polygon-art.
+
+<p align="center">
+  <img src="images/TrianRexIcon.jpg" alt="TrianRex Icon" width="200" height="200">
+</p>
 
 ---
 
 ## 📥 Download
 
+⬇️ **[Download TrianRex v0.9.8](downloads/TrianRex_v0.9.8.afscript)**
 ⬇️ **[Download TrianRex v0.9](downloads/TrianRex_v0.9.afscript)**
 
 ## ✨ Features
 
 | Feature | Description |
 |---------|-------------|
-| 🎯 **Contour-accurate triangulation** | The triangles follow the object's exact outer contour — circles, stars, hearts or custom paths stay clearly recognizable (no "pizza effect") |
-| 🎨 **Object color** | The original's fill (solid colors **and** gradients) is transferred onto the triangles — even after moving or scaling the object |
+| 🎯 **Contour-accurate triangulation** | The triangles follow the object's exact outer contour — circles, stars, hearts or custom paths stay clearly recognizable |
+| 🎨 **Object color** | The original's fill (solid colors **and** gradients) is transferred onto the triangles |
 | 🎲 **Random mode** | Colorful variations of the object color, starting from the nearest hues |
 | ↕️ **Gradient modes** | Directional shadings: top→bottom, bottom→top, left→right |
 | 🌈 **Color variation** | Slider for subtle to strong per-triangle color shades |
@@ -52,7 +57,7 @@
 
 - On very complex shapes, gradients are not always detected correctly
 - Occasionally, small edge triangles may stick out minimally beyond the contour
-- Sometimes Affinity serves cached object data — if in doubt, save once (Ctrl+S) and re-run the script
+- Sometimes Affinity serves cached object data — if in doubt, save, re-open your projekt and re-run the script
 
 ## 🛠️ Technology
 

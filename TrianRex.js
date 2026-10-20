@@ -2,7 +2,7 @@
 
 /**
  * ============================================================================
- * TRIANREX v0.9
+ * TRIANREX v0.9.8
  * ============================================================================
  */
 
@@ -18,8 +18,8 @@ const { RGBA8 } = require('/colours');
 const { UnitType } = require('/units');
 const { BlendMode } = require('affinity:common');
 
-const APP_NAME      = 'TrianRex';
-const MAX_TRIANGLES = 4000;
+const APP_NAME      = 'TrianRex 0.9.8';
+const MAX_TRIANGLES = 12000;
 const MAX_POINTS    = 6000;
 const GRID_BUDGET   = 4000;
 const MAX_BOUNDARY  = 3500;
@@ -528,7 +528,8 @@ function chooseGradientSpace(fillInfo, dstBox) {
 
     const frac = inRange / probes.length;           // Primär-Score
     const spreadPen = Math.abs((mx - mn) - 1) * 0.1; // Feinjustierung
-    const score = frac - spreadPen;
+    const centerPen = Math.abs(((mn + mx) / 2) - 0.5) * 0.2;  // ⬅️ NEU: Bestraft Räume, die nicht zentriert sind!
+    const score = frac - spreadPen - centerPen;
     console.log('  GRAD-SPACE[' + defs[d][0] + ']: t=[' + mn.toFixed(2) + '..' + mx.toFixed(2)
       + '] imBereich=' + Math.round(frac * 100) + '% score=' + score.toFixed(2));
     if (!best || score > best.score) best = { name: defs[d][0], score: score };
@@ -686,8 +687,8 @@ function sampleOriginalFillAt(fillInfo, px, py, origBox) {
   const stops = fillInfo.stops;
   if (stops.length === 1) return stops[0].col;
 
-    // 1) BESTER WEG: API-Inverse + gewählter Raum
-     if (fillInfo.invTransform && fillInfo.gradSpace) {
+  // 1) BESTER WEG: API-Inverse + gewählter Raum
+  if (fillInfo.invTransform && fillInfo.gradSpace) {
     const a = fillInfo.align;
     const sp = fillInfo.gradSpace;
     let inp = null;
@@ -704,7 +705,6 @@ function sampleOriginalFillAt(fillInfo, px, py, origBox) {
       const q = fillInfo.nodeInvTransform.applyToPoint({ x: px, y: py });
       inp = { x: q.x - a.src.x, y: q.y - a.src.y };
     } else if (a) {
-      // ...srcAbs/srcLocal/srcUnit wie gehabt...
       const sx = (a.dst.width / a.src.width) || 1;
       const sy = (a.dst.height / a.src.height) || 1;
       const s = { x: a.src.x + (px - a.dst.x) / sx, y: a.src.y + (py - a.dst.y) / sy };
@@ -720,26 +720,27 @@ function sampleOriginalFillAt(fillInfo, px, py, origBox) {
       } catch (e) {}
     }
   }
-  
-  // 2) Geo-Punkte
+
+  // 2) Geo-Punkte (Start → End des Verlaufs)
   if (fillInfo.geo) {
     const gs = fillInfo.geo.start, ge = fillInfo.geo.end;
     const vx = ge.x - gs.x, vy = ge.y - gs.y;
     const len2 = vx * vx + vy * vy;
     if (len2 > 1e-9) {
-      const t = ((px - gs.x) * vx + (py - gs.y) * vy) / len2;
-      return sampleStops(stops, t);
+      const tGeo = ((px - gs.x) * vx + (py - gs.y) * vy) / len2;
+      return sampleStops(stops, tGeo);
     }
   }
 
   // 3) FALLBACK: Heuristik (im Quell-Raum!)
-  let t = 0;
+  const sBox = (fillInfo.align && fillInfo.align.src) ? fillInfo.align.src : fillInfo.box;
+  let tVal = 0;
   const relX = (px - sBox.x) / (sBox.width || 1);
   const relY = (py - sBox.y) / (sBox.height || 1);
-  if (sBox.width >= sBox.height * 1.5) t = clamp(relX, 0, 1);
-  else if (sBox.height >= sBox.width * 1.5) t = clamp(1 - relY, 0, 1);
-  else t = clamp((relX + (1 - relY)) / 2, 0, 1);
-  return sampleStops(stops, t);
+  if (sBox.width >= sBox.height * 1.5) tVal = clamp(relX, 0, 1);
+  else if (sBox.height >= sBox.width * 1.5) tVal = clamp(1 - relY, 0, 1);
+  else tVal = clamp((relX + (1 - relY)) / 2, 0, 1);
+  return sampleStops(stops, tVal);
 }
 // ── HSL ───────────────────────────────────────────────────────────────────
 
@@ -1013,14 +1014,9 @@ function distToContour(px, py, contours) {
   }
   return Math.sqrt(best);
 }
-
-function edgeCrossesOutside(p, q, contours) {
-  let out = 0;
-  for (let i = 1; i <= 3; i++) {
-    const t = i / 4;
-    if (!pointInside(p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, contours)) out++;
-  }
-  return out >= 2;
+// Fläche eines Dreiecks (für Splitter-Filter)
+function triArea(a, b, c) {
+  return Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
 }
 
 function contourLength(pts) {
@@ -1223,7 +1219,93 @@ function findNewContainer(doc, spread, beforeKeys, selectedBeforeKeys, groupName
   return null;
 }
 
-// ── Hauptprogramm ─────────────────────────────────────────────────────────
+// ── PREVIEW-HELFER ────────────────────────────────────────────────────────
+let METHODS_DUMPED = false;
+
+function dumpAddMethods(obj, label) {
+  if (METHODS_DUMPED) return;
+  METHODS_DUMPED = true;
+  try {
+    const names = [];
+    let o = obj, depth = 0;
+    while (o && depth < 4) {
+      const ns = Object.getOwnPropertyNames(o);
+      for (let i = 0; i < ns.length; i++)
+        if (/^add/.test(ns[i]) && names.indexOf(ns[i]) < 0) names.push(ns[i]);
+      o = Object.getPrototypeOf(o);
+      depth++;
+    }
+    console.log(APP_NAME + ': VERFÜGBARE ' + label + '-METHODEN: ' + names.join(', '));
+  } catch (e) {}
+}
+
+function dumpControlProps(ctrl, label) {
+  try {
+    const names = [];
+    let o = ctrl, depth = 0;
+    while (o && depth < 5) {
+      const ns = Object.getOwnPropertyNames(o);
+      for (let i = 0; i < ns.length; i++)
+        if (names.indexOf(ns[i]) < 0) names.push(ns[i]);
+      o = Object.getPrototypeOf(o);
+      depth++;
+    }
+    console.log(APP_NAME + ': ' + label + '-PROPS: ' + names.join(', '));
+  } catch (e) {}
+}
+
+function runParamsDialog(d, minSize, showWarn) {
+  const dlg = Dialog.create(APP_NAME);
+  dlg.initialWidth = 420;
+  dlg.isResizable = true;
+  const col = dlg.addColumn();
+
+  const gGeom = col.addGroup('Geometrie');
+  const sizeCtrl = numberField(gGeom, 'Ø Dreiecksgröße (px)', d.size, minSize, Math.max(1000, minSize * 2),
+    'Kleinere Werte = mehr und kleinere Dreiecke. Minimum: ' + minSize + ' px.');
+  const jitterCtrl = numberField(gGeom, 'Unregelmäßigkeit (%)', d.jitter, 0, 100,
+    'Verschiebt die Gitterpunkte zufällig – 0 = perfektes Raster.');
+
+  const gCol = col.addGroup('Farbe');
+  const comboItems = ['Objektfarbe', 'Zufällig', 'Verlauf oben → unten', 'Verlauf unten → oben', 'Verlauf links → rechts'];
+  const dirCtrl = gCol.addComboBox('Verteilung', comboItems, d.mode);
+  try { dirCtrl.isFullWidth = true; } catch (e) {}
+  const varCtrl = numberField(gCol, 'Farbvariation (%)', d.varv, 0, 100,
+    'Leichte Helligkeits-Shades pro Dreieck. 0 = exakte Objektfarbe.');
+
+  const gOpt = col.addGroup('Optionen');                                    // ⬅️ DARF NICHT FEHLEN!
+  const seedCtrl = numberField(gOpt, 'Zufalls-Seed', d.seed, 0, 9999, 'Gleicher Seed = gleiches Ergebnis.');
+
+  if (showWarn) {
+    const wt = gOpt.addStaticText('', '\u26A0 Warnung: Konturen nicht lesbar — Form wird möglicherweise nicht exakt getroffen.');
+    wt.isFullWidth = true;
+    try { wt.textColour = RGBA8(140, 95, 0, 255); } catch (e) {}
+  }
+
+  const r = runModal(dlg);
+  if (!r || !r.equals(DialogResult.Ok)) return null;
+
+  return {
+    size: Math.max(minSize, Number(sizeCtrl.value) || d.size),
+    jitter: clamp(Number(jitterCtrl.value) || 0, 0, 100),
+    varv: clamp(Number(varCtrl.value) || 0, 0, 100),
+    seed: clamp(Math.floor(Number(seedCtrl.value) || 0), 0, 9999),
+    mode: Math.max(0, dirCtrl.selectedIndex)
+  };
+}
+// Rollt die zuletzt ausgeführten Commands zurück (1 Command = 1 Undo-Schritt).
+// Gibt true zurück, wenn alles sauber entfernt wurde.
+function undoCommands(doc, n) {
+  for (let i = 0; i < n; i++) {
+    try { doc.undo(); }
+    catch (e) {
+      const cands = methodNamesMatching(doc, /^(undo|revert|roll)/i);
+      console.log(APP_NAME + ': doc.undo() fehlgeschlagen. Kandidaten: ' + (cands.length ? cands.join(', ') : 'KEINE'));
+      return false;
+    }
+  }
+  return true;
+}
 
 function main() {
   const doc = Document.current;
@@ -1248,82 +1330,9 @@ function main() {
   const minSize = minTriSizeFor(origBox);
   const startSize = clamp(clamp(Math.round(diag / 12), 4, 400), minSize, Math.max(minSize, 400));
 
-  const baseGroupName = srcName + '-Triangulated';
-  const groupName = findUniqueGroupName(baseNameSafe(), spread);
-  function baseNameSafe() { return baseGroupName; }
-
-  // ── DIALOG ─────────────────────────────────────────────────────────────
-  const dlg = Dialog.create(APP_NAME);
-  dlg.initialWidth = 420;
-  dlg.isResizable = true;
-  const col = dlg.addColumn();
-
-  const gGeom = col.addGroup('Geometrie');
-  const sizeCtrl = numberField(gGeom, 'Ø Dreiecksgröße (px)', startSize, minSize, Math.max(1000, minSize * 2),
-    'Kleinere Werte = mehr und kleinere Dreiecke. Minimum: ' + minSize + ' px.');
-  const jitterCtrl = numberField(gGeom, 'Unregelmäßigkeit (%)', 50, 0, 100,
-    'Verschiebt die Gitterpunkte zufällig – 0 = perfektes Raster.');
-
-  const gCol = col.addGroup('Farbe');
-  const comboItems = ['Objektfarbe', 'Zufällig', 'Verlauf oben → unten', 'Verlauf unten → oben', 'Verlauf links → rechts'];
-  const dirCtrl = gCol.addComboBox('Verteilung', comboItems, 0);
-  try { dirCtrl.isFullWidth = true; } catch (e) {}
-
-  const varCtrl = numberField(gCol, 'Farbvariation (%)', 25, 0, 100,
-    'Leichte Helligkeits-Shades pro Dreieck. 0 = exakte Objektfarbe.');
-
-  const setVarEnabled = function (en) {
-    try { varCtrl.isEnabled = en; } catch (e) {}
-    try { varCtrl.enabled = en; } catch (e) {}
-  };
-  const refreshVarState = function () {
-    let idx = 0;
-    try {
-      const si = dirCtrl.selectedIndex;
-      if (typeof si === 'number' && isFinite(si)) idx = si;
-    } catch (e) {}
-    console.log('VERTEILUNG-CHANGE: Index ' + idx + ' → Farbvariation ' + (idx === 0 ? 'DISABLED' : 'ENABLED'));
-    setVarEnabled(idx !== 0);
-  };
-  setVarEnabled(true);
-  const handlerNames = ['onSelectionChanged', 'onChange', 'onChanged', 'selectionChanged', 'onValueChanged', 'callback'];
-  for (let i = 0; i < handlerNames.length; i++) {
-    try { dirCtrl[handlerNames[i]] = refreshVarState; } catch (e) {}
-    try { dlg[handlerNames[i]] = refreshVarState; } catch (e) {}
-  }
-
-  const gOpt = col.addGroup('Optionen');
-  const seedCtrl = numberField(gOpt, 'Zufalls-Seed', 0, 0, 9999, 'Gleicher Seed = gleiches Ergebnis.');
-
-  if (!contours.length) {
-    const warningIcon = '\u26A0';
-    const wt = gOpt.addStaticText('', warningIcon + ' Warnung: Konturen nicht lesbar — Form wird möglicherweise nicht exakt getroffen.');
-    wt.isFullWidth = true;
-    try { wt.textColour = RGBA8(140, 95, 0, 255); } catch (e) {}
-    try { wt.backgroundColour = RGBA8(255, 235, 150, 255); } catch (e) {}
-  }
-
-  const result = runModal(dlg);
-  if (!result || !result.equals(DialogResult.Ok)) return;
-
-  // ── NEU: SYNC + KOMPLETTES NEU-LESEN NACH DEM DIALOG ───────────────────
-  forceDocumentSync(doc);
-
-  selected = getSelectedNodes(doc);
-  if (!selected.length) {
-    console.log(APP_NAME + ': Auswahl nach Dialog leer — nutze alte Referenz.');
-    // Wir behalten die alten Nodes als Fallback, warnen aber:
-    console.log('WARNUNG: Möglicherweise veraltete Geometrie!');
-  }
-
-  logSelectionDiagnostics(doc, 'NACH-DIALOG');
-  contours = extractContours(selected);
-  origBox = unionBox(selected, contours);
-  if (!origBox) fail('Konnte Größe nach dem Dialog nicht bestimmen.');
-  console.log('FINGERPRINT[NACH-DIALOG]: ' + contourFingerprint(contours));
-  console.log(APP_NAME + ': Box NACH-DIALOG: ' + boxToStr(origBox));
- 
+  // ── FÜLLUNG + VERLAUFSRAUM ─────────────────────────────────────────────
   const fillInfo = readFillInfo(selected[0], origBox);
+
   try {
     if (fillInfo.type === 'gradient' && selected[0] && selected[0].transform) {
       fillInfo.nodeInvTransform = selected[0].transform.clone().invert();
@@ -1336,227 +1345,253 @@ function main() {
   if (fillInfo.type === 'gradient') {
     fillInfo.gradSpace = chooseGradientSpace(fillInfo, origBox);
   }
-  // Gruppenname ebenfalls neu berechnen (evtl. haben sich Namen geändert)
-  const finalGroupName = findUniqueGroupName(srcName + '-Triangulated', spread);
-  console.log(APP_NAME + ': Gruppenname → "' + finalGroupName + '"');
+     function buildDefs(p) {
+    const triSize = p.size;
+    const jitter = p.jitter / 100;
+    const variance = p.varv / 100;
+    const rand = makeRandom(p.seed || Math.floor(Math.random() * 9999));
 
-  // ── EINSTELLUNGEN ───────────────────────────────────────────────────────
-  const triSize  = Math.max(minSize, Number(sizeCtrl.value) || startSize);
-  const jitter   = clamp(Number(jitterCtrl.value) || 0, 0, 100) / 100;
-  const variance = clamp(Number(varCtrl.value) || 0, 0, 100) / 100;
-  const seed     = clamp(Math.floor(Number(seedCtrl.value) || 0), 0, 9999);
-  const mode     = Math.max(0, dirCtrl.selectedIndex);
+    function isValidPoint(pt) {
+      return !!pt && isFinite(pt.x) && isFinite(pt.y);
+    }
 
-  const rand = makeRandom(seed || Math.floor(Math.random() * 9999));
+    // ── PUNKTE ────────────────────────────────────────────────────────
+    const points = [];
 
-  // ── PUNKTWOLKE ──────────────────────────────────────────────────────────
-  const points = [];
+    if (contours.length) {
+      let totalLen = 0;
+      for (let i = 0; i < contours.length; i++) totalLen += contourLength(contours[i]);
 
-  if (contours.length) {
-    let totalLen = 0;
-    for (let i = 0; i < contours.length; i++) totalLen += contourLength(contours[i]);
-    let spacing = Math.max(2, triSize * 0.3);
-    while (totalLen / spacing > MAX_BOUNDARY) spacing *= 1.3;
-    for (let i = 0; i < contours.length; i++) {
-      const rs = resampleContour(contours[i], spacing);
-      // Nudge: minimal Richtung Kontur-Schwerpunkt (fixt Ecken + Randtests)
-      let ccx = 0, ccy = 0;
-      for (let j = 0; j < rs.length; j++) { ccx += rs[j].x; ccy += rs[j].y; }
-      ccx /= rs.length; ccy /= rs.length;
-      const eps = Math.max(0.05, (origBox.width + origBox.height) * 0.0004);
-      for (let j = 0; j < rs.length; j++) {
-        let nx = ccx - rs[j].x, ny = ccy - rs[j].y;
-        const nl = Math.hypot(nx, ny) || 1;
-        rs[j] = { x: rs[j].x + (nx / nl) * eps, y: rs[j].y + (ny / nl) * eps };
+      let spacing = Math.max(2, triSize * 0.3);
+      while (totalLen / spacing > MAX_BOUNDARY) spacing *= 1.3;
+      const minBoundaryPoints = Math.max(60, Math.round(totalLen / Math.max(6, triSize * 0.5)));
+      if (totalLen / spacing < minBoundaryPoints) spacing = totalLen / minBoundaryPoints;
+
+      for (let i = 0; i < contours.length; i++) {
+        const rs = resampleContour(contours[i], spacing).filter(isValidPoint);
+        if (rs.length < 3) continue;
+
+        const n = rs.length;
+        let ccx = 0, ccy = 0;
+        for (let j = 0; j < n; j++) { ccx += rs[j].x; ccy += rs[j].y; }
+        ccx /= n; ccy /= n;
+
+        const eps = Math.max(1.0, triSize * 0.012);
+
+        // Randpunkte mit Mini-Nudge nach innen (damit sie sicher innen liegen)
+        for (let j = 0; j < n; j++) {
+          const nx = ccx - rs[j].x, ny = ccy - rs[j].y;
+          const nl = Math.hypot(nx, ny) || 1;
+          points.push({ x: rs[j].x + (nx / nl) * eps, y: rs[j].y + (ny / nl) * eps });
+        }
+
+        // ── ECKEN aus der DICHTEN Originalkontur (genauer als nach Resampling)
+        const dc = contours[i];
+        const dn = dc.length;
+        if (dn >= 7) {
+          const CORNER_COS = Math.cos((130 / 180) * Math.PI);
+          const dlook = 3;                       // fest, klein — nie > dn/2
+          let lastCx = Infinity, lastCy = Infinity;
+          for (let j = 0; j < dn; j++) {
+            const pj = dc[j];
+            const pa = dc[((j - dlook) % dn + dn) % dn];   // ⬅️ POSITIVER Modulo
+            const pb = dc[(j + dlook) % dn];
+            const v1x = pa.x - pj.x, v1y = pa.y - pj.y;
+            const v2x = pb.x - pj.x, v2y = pb.y - pj.y;
+            const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+            if (l1 < 1e-6 || l2 < 1e-6) continue;
+            if ((v1x * v2x + v1y * v2y) / (l1 * l2) < CORNER_COS) {
+              // Nur einen Punkt pro Ecke setzen (Cluster vermeiden)
+              if (Math.hypot(pj.x - lastCx, pj.y - lastCy) < spacing * 0.5) continue;
+              lastCx = pj.x; lastCy = pj.y;
+              const nx = ccx - pj.x, ny = ccy - pj.y;
+              const nl = Math.hypot(nx, ny) || 1;
+              const cp = { x: pj.x + (nx / nl) * eps, y: pj.y + (ny / nl) * eps };
+              if (isValidPoint(cp)) points.push(cp);
+            }
+          }
+        }
       }
-      for (let j = 0; j < rs.length; j++) points.push(rs[j]);
     }
-    console.log(APP_NAME + ': ' + points.length + ' Randpunkte aus Kontur.');
-  }
 
-  const margin = 0.005;
-  const colsN = Math.max(2, Math.ceil(origBox.width / triSize) + 1);
-  const rowsN = Math.max(2, Math.ceil(origBox.height / triSize) + 1);
-
-  for (let r = 0; r < rowsN; r++) {
-    for (let c = 0; c < colsN; c++) {
-      const gx = origBox.x + margin + ((c + 0.5) / colsN) * origBox.width * (1 - 2*margin);
-      const gy = origBox.y + margin + ((r + 0.5) / rowsN) * origBox.height * (1 - 2*margin);
-      const jx = (rand() - 0.5) * 2 * triSize * jitter;
-      const jy = (rand() - 0.5) * 2 * triSize * jitter;
-      const px = gx + jx, py = gy + jy;
-      if (contours.length && !pointInside(px, py, contours)) continue;
-      points.push({ x: px, y: py });
+    // Innergrid (mit Jitter)
+    const margin = 0.005;
+    const colsN = Math.max(2, Math.ceil(origBox.width / triSize) + 1);
+    const rowsN = Math.max(2, Math.ceil(origBox.height / triSize) + 1);
+    for (let r = 0; r < rowsN; r++) {
+      for (let c = 0; c < colsN; c++) {
+        const gx = origBox.x + margin + ((c + 0.5) / colsN) * origBox.width * (1 - 2 * margin);
+        const gy = origBox.y + margin + ((r + 0.5) / rowsN) * origBox.height * (1 - 2 * margin);
+        const px = gx + (rand() - 0.5) * 2 * triSize * jitter;
+        const py = gy + (rand() - 0.5) * 2 * triSize * jitter;
+        if (contours.length && !pointInside(px, py, contours)) continue;
+        if (isValidPoint({ x: px, y: py })) points.push({ x: px, y: py });
+      }
     }
-  }
-  console.log(APP_NAME + ': Insgesamt ' + points.length + ' Punkte für Triangulation.');
 
-  if (points.length > MAX_POINTS) {
-    alertBox('Zu viele Punkte (' + points.length + ').\n\nBitte Dreiecksgröße erhöhen — Minimum: ' + minSize + ' px.');
-    return;
-  }
+    console.log(APP_NAME + ': ' + points.length + ' Punkte für Triangulation.');
 
-  const tris = delaunay(points);
-  console.log(APP_NAME + ': Rohes Triangulat: ' + tris.length + ' Dreiecke.');
+    if (points.length < 3) {
+      alertBox('Nicht genug Punkte für Triangulation.\nBitte Dreiecksgröße verringern.');
+      return null;
+    }
+    if (points.length > MAX_POINTS) {
+      alertBox('Zu viele Punkte (' + points.length + ').\n\nBitte Dreiecksgröße erhöhen — Minimum: ' + minSize + ' px.');
+      return null;
+    }
 
-  // ── FÄRBUNG + FILTER ────────────────────────────────────────────────────
-  const baseSolid = fillInfo.type === 'solid'
-    ? fillInfo.solid
-    : fillInfo.stops[Math.floor(fillInfo.stops.length / 2)].col;
-  const hsl = rgbToHsl(baseSolid.r, baseSolid.g, baseSolid.b);
-  const defs = [];
+    // ── TRIANGULATION + FARBEN ───────────────────────────────────────
+    const tris = delaunay(points);
+    console.log(APP_NAME + ': ' + tris.length + ' Roh-Dreiecke.');
 
-  // Variations-Faktoren:
-  //  - multFactor für Objektfarbe/Zufällig (multiplikativ → kein Weiß-Ausrutscher)
-  //  - addFactor für gerichtete Verläufe (additiv)
-  const multFactor = 0.1;  // multiplikative Bandbreite (±) pro %
-  const addFactor  = 0.5; // additive Bandbreite pro %
+    const baseSolid = fillInfo.type === 'solid'
+      ? fillInfo.solid
+      : fillInfo.stops[Math.floor(fillInfo.stops.length / 2)].col;
+    const hsl = rgbToHsl(baseSolid.r, baseSolid.g, baseSolid.b);
+    const multFactor = 0.01;
+    const addFactor = 0.15;
+    const defs = [];
+    const minTriArea = Math.max(0.5, triSize * triSize * 0.003);
 
-  for (let ti = 0; ti < tris.length; ti++) {
-    const t = tris[ti];
-    const a = points[t[0]], b = points[t[1]], c = points[t[2]];
-    const cx = (a.x + b.x + c.x) / 3;
-    const cy = (a.y + b.y + c.y) / 3;
+    for (let ti = 0; ti < tris.length; ti++) {
+      const t = tris[ti];
+      if (t[0] >= points.length || t[1] >= points.length || t[2] >= points.length) continue;
 
-     // Ecken-Fix v2: Rettung nur bei Centroid KNAPP außerhalb der Kontur.
-    // (Rechteck-Ecken = numerisch draußen; Herz/Stern-Kerben = tief draußen → raus)
-        if (contours.length) {
-      const cenIn = pointInside(cx, cy, contours);
+      const a = points[t[0]], b = points[t[1]], c = points[t[2]];
+      if (!isValidPoint(a) || !isValidPoint(b) || !isValidPoint(c)) continue;
 
-      if (!cenIn) {
-        // Centroid draußen: Rettung NUR bei Rechteck-Ecken (Centroid knapp an der Kante)
-        const d = distToContour(cx, cy, contours);
-        const epsCorner = Math.max(3, triSize * 0.3);
-        if (d >= epsCorner) continue;
+      const cx = (a.x + b.x + c.x) / 3;
+      const cy = (a.y + b.y + c.y) / 3;
+
+           // ── FILTER (mit Ecken-Rettung) ───────────────────────────────────
+            // ── FILTER: Ecken-Sliver retten, Auswüchse & Brücken töten ─────────
+      if (contours.length) {
+        if (triArea(a, b, c) < Math.max(0.5, triSize * triSize * 0.0015)) continue;
+
         let vi = 0;
         if (pointInside(a.x, a.y, contours)) vi++;
         if (pointInside(b.x, b.y, contours)) vi++;
         if (pointInside(c.x, c.y, contours)) vi++;
-        if (vi < 2) continue;
+
+        // Kanten-Mittelpunkte prüfen: Zählt nur als "draußen", wenn der
+        // Abstand zur Kontur die Toleranz übersteigt (numerische Nähe am
+        // Rand zählt als innen — sonst sterben die Quadrat-Ecken).
+        const tolM = Math.max(2, triSize * 0.08);
+        const mids = [
+          { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+          { x: (b.x + c.x) / 2, y: (b.y + c.y) / 2 },
+          { x: (c.x + a.x) / 2, y: (c.y + a.y) / 2 }
+        ];
+        let mo = 0;
+        for (let mi = 0; mi < 3; mi++) {
+          if (!pointInside(mids[mi].x, mids[mi].y, contours) &&
+              distToContour(mids[mi].x, mids[mi].y, contours) > tolM) mo++;
+        }
+
+        const cin = pointInside(cx, cy, contours);
+
+        if (!cin) {
+          // Schwerpunkt DRAUSSEN: Rettung NUR als Eck-Sliver —
+          // ALLE Ecken innen, KEINE Kantenmitte draußen, nah am Rand.
+          if (vi < 3 || mo > 0) continue;
+          if (distToContour(cx, cy, contours) > Math.max(4, triSize * 0.3)) continue;
+        } else {
+          // Schwerpunkt INNEN: akzeptieren — außer es ist eine Brücke
+          // über eine Kerbe (2+ Kantenmitten deutlich draußen).
+          if (mo >= 2) continue;
+          if (vi === 0) continue;
+        }
       }
 
-      // BRÜCKEN-KILLER: verläuft IRGENDEINE Kante durch eine Außenbucht → raus
-      if (edgeCrossesOutside(a, b, contours) ||
-          edgeCrossesOutside(b, c, contours) ||
-          edgeCrossesOutside(c, a, contours)) continue;
-    }
-
-    let col;
-    if (mode === 0) {
-      // ── OBJEKTFARBE: exakt sampeln + optional dezente Shades ──
-      col = fillInfo.type === 'gradient'
-        ? sampleOriginalFillAt(fillInfo, cx, cy, origBox)
-        : fillInfo.solid;
-
-      if (variance > 0) {
-        // MULTIPLIKATIV: helle Dreiecke variieren um ±x% ihrer Helligkeit,
-        // dunkle entsprechend wenig → kein Weiß-Kippen mehr
-        const vhsl = rgbToHsl(col.r, col.g, col.b);
-        const f = 1 + (rand() - 0.5) * 2 * variance * multFactor;
-        col = hslToRgb(vhsl.h, vhsl.s, clamp(vhsl.l * f, 0.02, 0.98));
-      }
-    } else if (mode === 1) {
-      // ── ZUFÄLLIG: Basisfarbe sampeln + Farbkreis-Wanderung ──
-      const base = fillInfo.type === 'gradient'
-        ? sampleOriginalFillAt(fillInfo, cx, cy, origBox)
-        : fillInfo.solid;
-      const bhsl = rgbToHsl(base.r, base.g, base.b);
-
-      // Nichtlineare Kurve: 25% → 0.06, 50% → 0.25, 80% → 0.64, 100% → 1
-      // → niedrige Werte bleiben farbig, Weiß-Gefahr erst oben
-      const strength = variance * variance;
-
-      // Hue-Wanderung (bleibt linear — Farbe ist unproblematisch)
-      let h = bhsl.h + (rand() - 0.5) * variance;
-      h = h - Math.floor(h);
-
-      const s = clamp(bhsl.s * (1 - (rand() - 0.5) * 2 * strength * 0.5), 0, 1);
-
-      // Lightness: asymmetrisch — aufhellen maximal Faktor (1 + 0.6*strength),
-      // abdunkeln locker (1 - strength). So kippt nichts Richtung Weiß.
-      const rdm = rand();
-      let l;
-      if (rdm >= 0.5) {
-        l = bhsl.l * (1 + (rdm - 0.5) * 2 * 0.6 * strength);
+      let col;
+      if (p.mode === 0) {
+        col = fillInfo.type === 'gradient'
+          ? sampleOriginalFillAt(fillInfo, cx, cy, origBox)
+          : fillInfo.solid;
+        if (variance > 0) {
+          const vhsl = rgbToHsl(col.r, col.g, col.b);
+          const f = 1 + (rand() - 0.5) * 2 * variance * multFactor;
+          col = hslToRgb(vhsl.h, vhsl.s, clamp(vhsl.l * f, 0.02, 0.98));
+        }
+      } else if (p.mode === 1) {
+        const base = fillInfo.type === 'gradient'
+          ? sampleOriginalFillAt(fillInfo, cx, cy, origBox)
+          : fillInfo.solid;
+        const bhsl = rgbToHsl(base.r, base.g, base.b);
+        const strength = variance * variance;
+        let h = bhsl.h + (rand() - 0.5) * variance;
+        h = h - Math.floor(h);
+        const s = clamp(bhsl.s * (1 - (rand() - 0.5) * 2 * strength * 0.5), 0, 1);
+        const rdm = rand();
+        let l;
+        if (rdm >= 0.5) l = bhsl.l * (1 + (rdm - 0.5) * 2 * 0.6 * strength);
+        else l = bhsl.l * (1 - ((0.5 - rdm) * 2) * strength);
+        col = hslToRgb(h, s, clamp(l, 0.02, 0.98));
       } else {
-        l = bhsl.l * (1 - ((0.5 - rdm) * 2) * strength);
+        let dl = 0;
+        if (p.mode === 2) {
+          const f = (cy - origBox.y) / origBox.height;
+          dl = f * variance * addFactor;
+        } else if (p.mode === 3) {
+          const f = 1 - (cy - origBox.y) / origBox.height;
+          dl = f * variance * addFactor;
+        } else {
+          const f = (cx - origBox.x) / origBox.width;
+          dl = f * variance * addFactor;
+        }
+        col = hslToRgb(hsl.h, hsl.s, clamp(hsl.l + dl, 0.05, 0.95));
       }
-      col = hslToRgb(h, s, clamp(l, 0.02, 0.98));
-    } else {
-      // ── GERICHTETE VERLÄUFE (additiv, da gerichtete Abstufung gewollt) ──
-      let dl = 0;
-      if (mode === 2) {
-        const f = (cy - origBox.y) / origBox.height;
-        dl = f * variance * addFactor;
-      } else if (mode === 3) {
-        const f = 1 - (cy - origBox.y) / origBox.height;
-        dl = f * variance * addFactor;
-      } else {
-        const f = (cx - origBox.x) / origBox.width;
-        dl = f * variance * addFactor;
-      }
-      col = hslToRgb(hsl.h, hsl.s, clamp(hsl.l + dl, 0.05, 0.95));
+
+      defs.push(triangleDefinition(a, b, c, col));
+      if (defs.length >= MAX_TRIANGLES) break;
     }
-    defs.push(triangleDefinition(a, b, c, col));
-    if (defs.length >= MAX_TRIANGLES) break;
-  }
 
-  console.log(APP_NAME + ': ' + defs.length + ' gültige Dreiecke nach Form-Filter.');
-  if (!defs.length) fail('Keine Dreiecke lagen innerhalb der Form.');
-
-  // ── SNAPSHOTS VOR GRUPPE ────────────────────────────────────────────────
-  const childrenBeforeKeys = [];
-  try {
-    forEachIn(spread.children, function (child) {
-      childrenBeforeKeys.push(nodeKey(child));
-    });
-  } catch (e) {}
-  const selectedBeforeKeys = [];
-  try {
-    for (let i = 0; i < selected.length; i++) selectedBeforeKeys.push(nodeKey(selected[i]));
-  } catch (e) {}
-
-  // ── ERGEBNISGRUPPE ANLEGEN ──────────────────────────────────────────────
-  let cmdResult = null;
-  try {
-    const gb = AddChildNodesCommandBuilder.create();
-    gb.addNode(ContainerNodeDefinition.create(finalGroupName));
-    gb.setInsertionTarget(spread);
-    cmdResult = doc.executeCommand(gb.createCommand(false, NodeChildType.Main));
-    if (cmdResult !== null && cmdResult !== undefined) {
-      console.log('EXECUTE-CMDRESULT: ' + String(cmdResult) + ' | Typ: '
-        + (cmdResult.constructor ? cmdResult.constructor.name : '?'));
-    } else {
-      console.log('EXECUTE-CMDRESULT: (leer)');
+    if (!defs.length) {
+      alertBox('Keine Dreiecke lagen innerhalb der Form.\nVersuche es mit anderen Parametern.');
+      return null;
     }
-  } catch (e) {
-    console.log(APP_NAME + ': Gruppen-Anlegen warf Fehler: ' + e);
+    console.log(APP_NAME + ': ' + defs.length + ' gültige Dreiecke.');
+    return defs;
   }
 
-  let container = null;
-  if (cmdResult && isContainerLike(cmdResult) && cmdResult.userDescription === finalGroupName) {
-    container = cmdResult;
-    console.log(APP_NAME + ': Gruppe via executeCommand-Rückgabe gefunden.');
-  }
-  if (!container) {
-    container = findNewContainer(doc, spread, childrenBeforeKeys, selectedBeforeKeys, finalGroupName);
+  // ── EINFÜGEN: Gruppe anlegen + Dreiecke rein ─────────────────────────────
+  function insertResult(defs, gName) {
+    const childrenBeforeKeys = [];
+    try { forEachIn(spread.children, function (child) { childrenBeforeKeys.push(nodeKey(child)); }); } catch (e) {}
+    const selectedBeforeKeys = selected.map(nodeKey);
+
+    let container = null;
+    try {
+      const gb = AddChildNodesCommandBuilder.create();
+      gb.addNode(ContainerNodeDefinition.create(gName));
+      gb.setInsertionTarget(spread);
+      doc.executeCommand(gb.createCommand(false, NodeChildType.Main));
+    } catch (e) {
+      console.log(APP_NAME + ': Gruppen-Anlegen warf Fehler: ' + e);
+    }
+    container = findNewContainer(doc, spread, childrenBeforeKeys, selectedBeforeKeys, gName);
+
+    const target = container || spread;
+    const nb = AddChildNodesCommandBuilder.create();
+    nb.setInsertionTarget(target);
+    for (let i = 0; i < defs.length; i++) nb.addNode(defs[i]);
+    doc.executeCommand(nb.createCommand(false, NodeChildType.Main));
+
+    return container;
   }
 
-  // ── DREIECKE EINFÜGEN ───────────────────────────────────────────────────
-  if (container) {
-    const nb = AddChildNodesCommandBuilder.create();
-    nb.setInsertionTarget(container);
-    for (let di = 0; di < defs.length; di++) nb.addNode(defs[di]);
-    doc.executeCommand(nb.createCommand(false, NodeChildType.Main));
-    alertBox(defs.length + ' Dreiecke erzeugt!\nGruppe: ' + finalGroupName);
-  } else {
-    console.log(APP_NAME + ': Gruppe nicht gefunden — Dreiecke werden direkt in die Seite eingefügt.');
-    const nb = AddChildNodesCommandBuilder.create();
-    nb.setInsertionTarget(spread);
-    for (let di = 0; di < defs.length; di++) nb.addNode(defs[di]);
-    doc.executeCommand(nb.createCommand(false, NodeChildType.Main));
-    alertBox(defs.length + ' Dreiecke erzeugt!\n\nHinweis: Ergebnisgruppe nicht gefunden.\nDie Dreiecke liegen direkt in der Seite.');
-  }
+  // ── ABLAUF ─────────────────────────────────────────────────────────────
+  let d = { size: startSize, jitter: 50, varv: 25, seed: 0, mode: 0 };
+
+  const p = runParamsDialog(d, minSize, !contours.length);
+  if (!p) return;                     // Abbruch
+
+  const defs = buildDefs(p);
+  if (!defs) return;                  // Fehlermeldung kam schon via alertBox
+
+  const groupName = findUniqueGroupName(srcName + '-Triangulated', spread);
+  insertResult(defs, groupName);
+  alertBox(defs.length + ' Dreiecke erzeugt!\nGruppe: ' + groupName);
 }
 
 try {
